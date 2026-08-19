@@ -1,0 +1,56 @@
+{
+  "name": "@krypticdev/encryption",
+  "version": "1.0.0",
+  "description": "The open-source Kryptic encryption engine for the browser. AES-256-GCM envelopes, P-256 sealed boxes, Argon2id key derivation. Byte-compatible with the .NET and Go implementations.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "prepublishOnly": "npm test && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dev-kryptic/Kryptic.Encryption.NPM.git"
+  },
+  "homepage": "https://kryptic.dev",
+  "bugs": {
+    "url": "https://github.com/dev-kryptic/Kryptic.Encryption.NPM/issues"
+  },
+  "keywords": [
+    "kryptic",
+    "encryption",
+    "aes-gcm",
+    "argon2",
+    "sealed-box",
+    "secrets"
+  ],
+  "author": "Kryptic by Theka.dev SINGLE MEMBER P.C.",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "hash-wasm": "^4.12.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.10"
+  }
+}
