@@ -1,5 +1,8 @@
 # Kryptic Encryption Engine - Security Architecture
 
+> Report vulnerabilities to **security@kryptic.dev**. Do not open a public GitHub
+> issue. Policy: [kryptic.dev/security/disclosure](https://kryptic.dev/security/disclosure).
+
 This document describes the complete cryptographic design of the Kryptic platform's
 encryption engine: what is derived from what, where each key lives, and the exact
 boundary of what the Kryptic server can and cannot see. It is written so a security
@@ -184,6 +187,7 @@ correctness against published vectors is delegated to the underlying implementat
 
 ## Reporting a vulnerability
 
-Email **security@kryptic.dev**. We operate a responsible disclosure program and a CVE
-coordination process for critical findings. Please do not open public issues for
-vulnerabilities.
+Email **security@kryptic.dev**. Do not open a public GitHub issue. The policy
+(scope, response targets, CVE handling) is at
+[kryptic.dev/security/disclosure](https://kryptic.dev/security/disclosure).
+Kryptic is not a CVE Numbering Authority.
