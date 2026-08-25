@@ -1,5 +1,5 @@
 {
-  "name": "@krypticdev/encryption",
+  "name": "@kryptic-dev/encryption",
   "version": "1.0.0",
   "description": "The open-source Kryptic encryption engine for the browser. AES-256-GCM envelopes, P-256 sealed boxes, Argon2id key derivation. Byte-compatible with the .NET and Go implementations.",
   "license": "Apache-2.0",

@@ -4,7 +4,7 @@ The browser implementation of Kryptic's open-source (Apache-2.0) encryption engi
 This is the package the **Management dashboard** uses to enroll vaults, seal org
 keys to devices, and encrypt secret values before they ever leave the tab.
 
-**npm package:** `@krypticdev/encryption`. This GitHub repository is named
+**npm package:** `@kryptic-dev/encryption`. This GitHub repository is named
 `Kryptic.Encryption.NPM` so auditors can tell the three runtimes apart.
 
 Sibling implementations of the same wire formats:
@@ -26,7 +26,7 @@ Argon2id via `hash-wasm`. Read [SECURITY.md](SECURITY.md) before reading code.
 ## Install
 
 ```
-npm install @krypticdev/encryption
+npm install @kryptic-dev/encryption
 ```
 
 Works in modern browsers (WebCrypto) and in Node 20+ (used by the test suite).
@@ -46,7 +46,7 @@ Works in modern browsers (WebCrypto) and in Node 20+ (used by the test suite).
 ### Encrypt a secret value (what the dashboard sends to the API)
 
 ```ts
-import { encryptSecretValue, decryptSecretValue } from '@krypticdev/encryption';
+import { encryptSecretValue, decryptSecretValue } from '@kryptic-dev/encryption';
 
 const envelope = await encryptSecretValue(
   orgKey, orgKeyId, definitionId, environmentId, 'postgres://…',
@@ -67,7 +67,7 @@ import {
   unlockPrivateKey,
   unwrapOrgKey,
   wrapOrgKeyTo,
-} from '@krypticdev/encryption';
+} from '@kryptic-dev/encryption';
 
 const { upload, keyPair } = await createEnrollment(passphrase);
 // POST upload to /api/encryption/enroll  (public key + wrapped private key only)
@@ -99,13 +99,13 @@ Add these on the GitHub repo (`Settings` > `Secrets and variables` > `Actions`):
 
 | Secret | What it is | Where to get it |
 | --- | --- | --- |
-| `NPM_TOKEN` | npm automation token with publish access to the `@krypticdev` org | [npmjs.com](https://www.npmjs.com/) > Access Tokens > Generate new token (classic, **Automation** type) **or** a granular token with `read-and-write` on `@krypticdev/encryption`. Store the token value as `NPM_TOKEN`. |
+| `NPM_TOKEN` | npm automation token with publish access to the [`kryptic-dev` org](https://www.npmjs.com/settings/kryptic-dev/packages) | [npmjs.com](https://www.npmjs.com/) > Access Tokens > Generate new token (classic, **Automation** type) **or** a granular token with `read-and-write` on `@kryptic-dev/encryption`. Store the token value as `NPM_TOKEN`. |
 
 One-time npm side:
 
-1. Create the `@krypticdev` organization on npm if it does not exist.
+1. Confirm you can publish under the [`kryptic-dev` npm org](https://www.npmjs.com/settings/kryptic-dev/packages).
 2. Add the publishing user as an owner/publisher of that org.
-3. The first publish creates `@krypticdev/encryption` as a public package
+3. The first publish creates `@kryptic-dev/encryption` as a public package
    (`publishConfig.access` is `public`).
 
 Optional, recommended later: switch the workflow to npm
@@ -118,8 +118,8 @@ only to commit the `package.json` version bump back to `main`.
 ### First publish
 
 1. Create the public GitHub repository `dev-kryptic/Kryptic.Encryption.NPM`.
-2. Create the `@krypticdev` npm org and add `NPM_TOKEN` as a repo secret.
-3. Push `main`. The workflow publishes `@krypticdev/encryption@1.0.0` on the
+2. Add `NPM_TOKEN` as a GitHub Actions secret on that repo.
+3. Push `main`. The workflow publishes `@kryptic-dev/encryption@1.0.0` on the
    first run (package not yet on npm).
 
 ### Versioning
