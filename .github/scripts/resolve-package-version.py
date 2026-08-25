@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve the npm version for @kryptic-dev/encryption.
+"""Resolve the npm version for @krypticdev/encryption.
 
 Patch (third number) auto-increments from the latest npm release when
 the incoming package.json version keeps the same major and minor.
@@ -18,8 +18,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-PACKAGE_ID = "@kryptic-dev/encryption"
-REGISTRY_URL = f"https://registry.npmjs.org/{PACKAGE_ID}"
+PACKAGE_ID = "@krypticdev/encryption"
+REGISTRY_URL = "https://registry.npmjs.org/@krypticdev%2fencryption"
 PACKAGE_JSON = Path("package.json")
 STABLE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 

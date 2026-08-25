@@ -53,6 +53,7 @@ jobs:
           node-version: '22'
           cache: npm
           registry-url: 'https://registry.npmjs.org'
+          scope: '@krypticdev'
 
       - name: Install
         run: npm ci

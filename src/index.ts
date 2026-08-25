@@ -1,5 +1,5 @@
 /**
- * Public API for `@kryptic-dev/encryption`.
+ * Public API for `@krypticdev/encryption`.
  *
  * Browser / WebCrypto implementation of the Kryptic encryption engine.
  * Byte-compatible with Kryptic.Encryption (NuGet) and Kryptic.Encryption.Go.
