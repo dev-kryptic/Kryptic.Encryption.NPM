@@ -90,15 +90,18 @@ npm run build
 ## Publishing (maintainers)
 
 CI lives in [`.github/workflows/publish.yml`](.github/workflows/publish.yml). Pull
-requests only run tests. A publish runs on push to `main`, a `v*.*.*` tag, or
-manual `workflow_dispatch`.
+requests only run tests. A publish on `main` (or `workflow_dispatch`) commits the
+version bump, pushes it as the Kryptic Release Bot, publishes the package, then
+tags `vX.Y.Z` and opens a GitHub Release.
 
 ### GitHub Actions secrets
 
-Add these on the GitHub repo (`Settings` > `Secrets and variables` > `Actions`):
+Add these at the org or on the GitHub repo (`Settings` > `Secrets and variables` > `Actions`):
 
 | Secret | What it is | Where to get it |
 | --- | --- | --- |
+| `RELEASE_BOT_APP_ID` | App ID of **Kryptic Release Bot** | GitHub App settings |
+| `RELEASE_BOT_PRIVATE_KEY` | Private key `.pem` of that app | GitHub App settings > Generate a private key |
 | `NPM_TOKEN` | npm automation token with publish access to the [`krypticdev` org](https://www.npmjs.com/settings/krypticdev/packages) | [npmjs.com](https://www.npmjs.com/) > Access Tokens > Generate new token (classic, **Automation** type) **or** a granular token with `read-and-write` on `@krypticdev/encryption`. Store the token value as `NPM_TOKEN`. |
 
 One-time npm side:
@@ -112,8 +115,8 @@ Optional, recommended later: switch the workflow to npm
 [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC) and drop
 `NPM_TOKEN`. Until then, the automation token is the secret that must exist.
 
-No other secrets are required. The workflow does not push commits to `main`.
-Patch numbers are taken from npm, not from a bot commit.
+No other secrets are required for git. The Release Bot is a ruleset bypass
+actor and commits `package.json`, the `vX.Y.Z` tag, and the GitHub Release.
 
 ### First publish
 
