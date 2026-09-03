@@ -182,8 +182,10 @@ TypeScript tests in `Kryptic.Encryption.NPM`, and the Go tests in
 tamper detection (flipped ciphertext/nonce bytes), wrong-key rejection, wrong-context
 rejection, envelope fuzzing (truncation, wrong version, malformed base64), Argon2id
 determinism per salt/parameter set, and wrap/unwrap round-trips. AES-256-GCM and Argon2id
-correctness against published vectors is delegated to the underlying implementations
-(.NET platform crypto is FIPS-validated in supported configurations).
+correctness against published vectors is delegated to the underlying implementations.
+.NET `AesGcm` calls OS cryptography: FIPS-validated on Windows CNG, and on Linux
+only when the host OpenSSL is a validated module in approved mode. Argon2id is not
+a FIPS-approved KDF.
 
 ## Reporting a vulnerability
 
