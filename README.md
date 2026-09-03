@@ -112,8 +112,8 @@ Optional, recommended later: switch the workflow to npm
 [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC) and drop
 `NPM_TOKEN`. Until then, the automation token is the secret that must exist.
 
-No other secrets are required. `GITHUB_TOKEN` is issued automatically and is used
-only to commit the `package.json` version bump back to `main`.
+No other secrets are required. The workflow does not push commits to `main`.
+Patch numbers are taken from npm, not from a bot commit.
 
 ### First publish
 
