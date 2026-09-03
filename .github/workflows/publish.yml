@@ -113,12 +113,20 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public
 
+      - name: Release notes from CHANGELOG.md
+        id: notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          NOTES_FILE: ${{ runner.temp }}/release-notes.md
+        run: python3 .github/scripts/release-notes-from-changelog.py
+
       - name: Tag and GitHub Release
         env:
           VERSION: ${{ steps.version.outputs.version }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           APP_ID: ${{ secrets.RELEASE_BOT_APP_ID }}
           APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          NOTES_FILE: ${{ steps.notes.outputs.file }}
         run: |
           set -euo pipefail
           TAG="v${VERSION}"
@@ -133,6 +141,7 @@ jobs:
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release ${TAG} already exists"
+            gh release edit "$TAG" --title "$(basename "$GITHUB_REPOSITORY") ${VERSION}" --notes-file "$NOTES_FILE"
           else
-            gh release create "$TAG" --generate-notes --title "$(basename "$GITHUB_REPOSITORY") ${VERSION}"
+            gh release create "$TAG" --title "$(basename "$GITHUB_REPOSITORY") ${VERSION}" --notes-file "$NOTES_FILE"
           fi
