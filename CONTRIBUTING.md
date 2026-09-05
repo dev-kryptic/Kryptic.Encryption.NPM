@@ -33,8 +33,9 @@ A merge to `main` is the release. The publish workflow commits the version bump 
 the Kryptic Release Bot, publishes to npm, tags `vX.Y.Z`, and opens a GitHub
 Release using the matching section in [CHANGELOG.md](CHANGELOG.md).
 
-Before merging release-worthy changes, move notes from **Unreleased** into a
-`## X.Y.Z` section so the release has a description. Format changes must ship in
+Leave release-worthy notes under **Unreleased**. The publish workflow creates
+the `## X.Y.Z` section from that body if it is missing (or a one-line fallback)
+and commits it. Format changes must ship in
 all three encryption repositories in the same release.
 
 ## Licensing of contributions

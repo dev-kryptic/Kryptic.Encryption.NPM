@@ -132,6 +132,11 @@ jobs:
           TAG="v${VERSION}"
           git config user.name "${APP_SLUG}[bot]"
           git config user.email "${APP_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- CHANGELOG.md; then
+            git add CHANGELOG.md
+            git commit -m "chore: add CHANGELOG section for ${VERSION}"
+            git push
+          fi
           git fetch --tags --force
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag ${TAG} already exists"
