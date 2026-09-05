@@ -5,6 +5,8 @@ the GitHub Release.
 
 ## Unreleased
 
+## 1.0.7
+
 ### Added
 
 - `rewrapPrivateKey` re-wraps an unlocked key pair under a new vault
