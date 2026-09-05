@@ -5,6 +5,11 @@ the GitHub Release.
 
 ## Unreleased
 
+### Added
+
+- `rewrapPrivateKey` re-wraps an unlocked key pair under a new vault
+  passphrase. The public key is unchanged, so existing grants stay valid.
+
 ## 1.0.2
 
 Initial public release.

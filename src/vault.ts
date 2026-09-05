@@ -86,6 +86,31 @@ export async function createEnrollment(
 }
 
 /**
+ * Re-wraps an already unlocked key pair under a new vault passphrase.
+ * The public key is unchanged, so existing org-key grants stay valid.
+ */
+export async function rewrapPrivateKey(
+  keyPair: KeyPairBytes,
+  passphrase: string,
+): Promise<EnrollmentMaterial> {
+  const salt = generateArgon2Salt();
+  const passphraseKey = await deriveKeyFromPassphrase(passphrase, salt);
+  const wrappedPrivateKey = await encryptEnvelope(
+    passphraseKey,
+    PASSPHRASE_WRAP_KEY_ID,
+    keyPair.privateKey,
+  );
+
+  return {
+    algorithm: 'P-256',
+    publicKey: toBase64Url(keyPair.publicKey),
+    wrappedPrivateKey,
+    kdfSalt: toBase64Url(salt),
+    kdfParametersVersion: ARGON2_V1.version,
+  };
+}
+
+/**
  * Recovers the user key pair from the passphrase and the server-stored record.
  * Throws if the passphrase is wrong (GCM authentication fails).
  */
