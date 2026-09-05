@@ -4,12 +4,15 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Incoming version override (leave empty to use package.json version)'
-        required: false
+      tag:
+        description: "Existing vX.Y.Z tag to publish"
+        required: true
         type: string
+
 
 permissions:
   contents: read
@@ -41,10 +44,8 @@ jobs:
   publish:
     needs: test
     if: >
-      github.actor != 'github-actions[bot]' &&
-      github.actor != 'kryptic-release-bot[bot]' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -60,6 +61,7 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -71,42 +73,30 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Resolve package version
+      - name: Resolve version from tag
         id: version
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          INPUT_VERSION: ${{ github.event.inputs.version }}
+          DISPATCH_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          INCOMING=""
-          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ -n "${INPUT_VERSION:-}" ]; then
-            INCOMING="$INPUT_VERSION"
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            TAG="${DISPATCH_TAG}"
+          else
+            TAG="${GITHUB_REF_NAME}"
           fi
-          VERSION="$(python3 .github/scripts/resolve-package-version.py "${INCOMING}")"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Resolved package version: ${VERSION}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag must look like v1.2.3. Got: ${TAG}" >&2
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "Publishing ${TAG}"
+
 
       - name: Set package.json version
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: npm version "${VERSION}" --no-git-tag-version --allow-same-version
-
-      - name: Commit version bump
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          APP_ID: ${{ secrets.RELEASE_BOT_APP_ID }}
-          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
-        run: |
-          set -euo pipefail
-          git config user.name "${APP_SLUG}[bot]"
-          git config user.email "${APP_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
-          if git diff --quiet -- package.json; then
-            echo "package.json already at ${VERSION}"
-            exit 0
-          fi
-          git add package.json
-          git commit -m "chore: release ${VERSION}"
-          git push
 
       - name: Publish to npm
         env:
@@ -120,33 +110,17 @@ jobs:
           NOTES_FILE: ${{ runner.temp }}/release-notes.md
         run: python3 .github/scripts/release-notes-from-changelog.py
 
-      - name: Tag and GitHub Release
+      - name: GitHub Release
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          APP_ID: ${{ secrets.RELEASE_BOT_APP_ID }}
-          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
           NOTES_FILE: ${{ steps.notes.outputs.file }}
         run: |
           set -euo pipefail
-          TAG="v${VERSION}"
-          git config user.name "${APP_SLUG}[bot]"
-          git config user.email "${APP_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
-          if ! git diff --quiet -- CHANGELOG.md; then
-            git add CHANGELOG.md
-            git commit -m "chore: add CHANGELOG section for ${VERSION}"
-            git push
-          fi
-          git fetch --tags --force
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag ${TAG} already exists"
-          else
-            git tag -a "$TAG" -m "Release ${VERSION}"
-            git push origin "$TAG"
-          fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release ${TAG} already exists"
             gh release edit "$TAG" --title "$(basename "$GITHUB_REPOSITORY") ${VERSION}" --notes-file "$NOTES_FILE"
           else
-            gh release create "$TAG" --title "$(basename "$GITHUB_REPOSITORY") ${VERSION}" --notes-file "$NOTES_FILE"
+            gh release create "$TAG" --title "$(basename "$GITHUB_REPOSITORY") ${VERSION}" --notes-file "$NOTES_FILE" --verify-tag
           fi
