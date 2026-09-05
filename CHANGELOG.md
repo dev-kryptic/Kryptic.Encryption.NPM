@@ -5,6 +5,10 @@ the GitHub Release.
 
 ## Unreleased
 
+## 1.0.8
+
+Release 1.0.8.
+
 ## 1.0.7
 
 ### Added
