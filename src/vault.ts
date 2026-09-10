@@ -67,11 +67,16 @@ export async function createEnrollment(
   const keyPair = await generateKeyPair();
   const salt = generateArgon2Salt();
   const passphraseKey = await deriveKeyFromPassphrase(passphrase, salt);
-  const wrappedPrivateKey = await encryptEnvelope(
-    passphraseKey,
-    PASSPHRASE_WRAP_KEY_ID,
-    keyPair.privateKey,
-  );
+  let wrappedPrivateKey: string;
+  try {
+    wrappedPrivateKey = await encryptEnvelope(
+      passphraseKey,
+      PASSPHRASE_WRAP_KEY_ID,
+      keyPair.privateKey,
+    );
+  } finally {
+    passphraseKey.fill(0);
+  }
 
   return {
     upload: {
@@ -95,11 +100,16 @@ export async function rewrapPrivateKey(
 ): Promise<EnrollmentMaterial> {
   const salt = generateArgon2Salt();
   const passphraseKey = await deriveKeyFromPassphrase(passphrase, salt);
-  const wrappedPrivateKey = await encryptEnvelope(
-    passphraseKey,
-    PASSPHRASE_WRAP_KEY_ID,
-    keyPair.privateKey,
-  );
+  let wrappedPrivateKey: string;
+  try {
+    wrappedPrivateKey = await encryptEnvelope(
+      passphraseKey,
+      PASSPHRASE_WRAP_KEY_ID,
+      keyPair.privateKey,
+    );
+  } finally {
+    passphraseKey.fill(0);
+  }
 
   return {
     algorithm: 'P-256',
@@ -122,7 +132,12 @@ export async function unlockPrivateKey(
     throw new Error(`Unknown KDF parameter set version '${record.kdfParametersVersion}'.`);
   }
   const passphraseKey = await deriveKeyFromPassphrase(passphrase, fromBase64Url(record.kdfSalt));
-  const privateKey = await decryptEnvelope(passphraseKey, record.wrappedPrivateKey);
+  let privateKey: Uint8Array;
+  try {
+    privateKey = await decryptEnvelope(passphraseKey, record.wrappedPrivateKey);
+  } finally {
+    passphraseKey.fill(0);
+  }
   return { publicKey: fromBase64Url(record.publicKey), privateKey };
 }
 
@@ -150,7 +165,12 @@ export async function recoverOrgKey(
   }
   const code = normalizeRecoveryCode(recoveryCode);
   const recoveryWrapKey = await deriveKeyFromPassphrase(code, fromBase64Url(kit.kdfSalt));
-  const recoveryPrivateKey = await decryptEnvelope(recoveryWrapKey, kit.wrappedPrivateKey);
+  let recoveryPrivateKey: Uint8Array;
+  try {
+    recoveryPrivateKey = await decryptEnvelope(recoveryWrapKey, kit.wrappedPrivateKey);
+  } finally {
+    recoveryWrapKey.fill(0);
+  }
   const recoveryPair: KeyPairBytes = {
     publicKey: fromBase64Url(kit.publicKey),
     privateKey: recoveryPrivateKey,
@@ -180,7 +200,12 @@ export async function createRecoveryKit(): Promise<RecoveryKit> {
   const keyPair = await generateKeyPair();
   const salt = generateArgon2Salt();
   const recoveryKey = await deriveKeyFromPassphrase(recoveryCode, salt);
-  const wrappedPrivateKey = await encryptEnvelope(recoveryKey, RECOVERY_WRAP_KEY_ID, keyPair.privateKey);
+  let wrappedPrivateKey: string;
+  try {
+    wrappedPrivateKey = await encryptEnvelope(recoveryKey, RECOVERY_WRAP_KEY_ID, keyPair.privateKey);
+  } finally {
+    recoveryKey.fill(0);
+  }
 
   return {
     recoveryCode,
@@ -195,11 +220,51 @@ export async function createRecoveryKit(): Promise<RecoveryKit> {
   };
 }
 
+/**
+ * Marks v2 machine client secrets. A "ksm2_" secret never goes on the wire:
+ * the machine presents machineAuthSecretForToken(secret) at token exchange
+ * and uses the full secret only locally, to unwrap its private key, so the
+ * server never sees anything that can derive the wrap key.
+ */
+export const MACHINE_SECRET_V2_PREFIX = 'ksm2_';
+
+const MACHINE_AUTH_SALT = new TextEncoder().encode('kryptic.machine.auth.v2');
+const MACHINE_AUTH_INFO = new TextEncoder().encode('auth');
+
+/**
+ * The value a machine presents at token exchange: for v2 secrets,
+ * base64url(HKDF-SHA256(secret, salt, info, 32)), locked by
+ * interop-vectors/machine-auth.json. Legacy secrets (no prefix) pass through
+ * unchanged so machines created before v2 keep working until rotated.
+ */
+export async function machineAuthSecretForToken(clientSecret: string): Promise<string> {
+  if (!clientSecret.startsWith(MACHINE_SECRET_V2_PREFIX)) return clientSecret;
+
+  const ikm = new TextEncoder().encode(clientSecret);
+  const hkdfKey = await crypto.subtle.importKey('raw', ikm as BufferSource, 'HKDF', false, [
+    'deriveBits',
+  ]);
+  const derived = await crypto.subtle.deriveBits(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt: MACHINE_AUTH_SALT as BufferSource,
+      info: MACHINE_AUTH_INFO as BufferSource,
+    },
+    hkdfKey,
+    256,
+  );
+  return toBase64Url(new Uint8Array(derived));
+}
+
 export interface MachineMaterial {
-  /** Show once, then only its hash exists anywhere. Same shape as the server's opaque tokens. */
+  /**
+   * Show once, then it exists nowhere but with the operator. Only the derived
+   * clientAuthSecret (and its hash) ever exists server-side.
+   */
   clientSecret: string;
   upload: {
-    clientSecret: string;
+    clientAuthSecret: string;
     publicKey: string;
     wrappedPrivateKey: string;
     kdfSalt: string;
@@ -211,26 +276,34 @@ export interface MachineMaterial {
 
 /**
  * The machine-identity crypto ceremony (creation and rotation): generates the
- * client secret and the machine key pair, wraps the private key under an
- * Argon2id key derived from the secret, and seals the unlocked org key to the
- * machine public key. The CI client later reverses this with nothing but its
- * clientId/clientSecret.
+ * "ksm2_" client secret and the machine key pair, wraps the private key under
+ * an Argon2id key derived from the full secret, and seals the unlocked org key
+ * to the machine public key. Only the domain-separated auth secret is uploaded;
+ * the raw secret never leaves the browser except to the operator's clipboard.
+ * The CI client later reverses this with nothing but its clientId/clientSecret.
  */
 export async function createMachineMaterial(
   orgKey: Uint8Array,
   orgKeyId: string,
 ): Promise<MachineMaterial> {
-  // 32 random bytes base64url - same entropy/shape as server-issued opaque tokens.
-  const clientSecret = toBase64Url(crypto.getRandomValues(new Uint8Array(32)));
+  // 32 random bytes base64url behind the version prefix - same entropy as
+  // server-issued opaque tokens.
+  const clientSecret =
+    MACHINE_SECRET_V2_PREFIX + toBase64Url(crypto.getRandomValues(new Uint8Array(32)));
 
   const keyPair = await generateKeyPair();
   const salt = generateArgon2Salt();
   const secretKey = await deriveKeyFromPassphrase(clientSecret, salt);
-  const wrappedPrivateKey = await encryptEnvelope(
-    secretKey,
-    MACHINE_SECRET_WRAP_KEY_ID,
-    keyPair.privateKey,
-  );
+  let wrappedPrivateKey: string;
+  try {
+    wrappedPrivateKey = await encryptEnvelope(
+      secretKey,
+      MACHINE_SECRET_WRAP_KEY_ID,
+      keyPair.privateKey,
+    );
+  } finally {
+    secretKey.fill(0);
+  }
   const publicKey = toBase64Url(keyPair.publicKey);
   const wrappedOrgKey = await wrapOrgKeyTo(publicKey, orgKeyId, orgKey);
   keyPair.privateKey.fill(0);
@@ -238,7 +311,7 @@ export async function createMachineMaterial(
   return {
     clientSecret,
     upload: {
-      clientSecret,
+      clientAuthSecret: await machineAuthSecretForToken(clientSecret),
       publicKey,
       wrappedPrivateKey,
       kdfSalt: toBase64Url(salt),

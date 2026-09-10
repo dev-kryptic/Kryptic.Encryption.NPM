@@ -94,15 +94,45 @@ describe('sealed box behavior', () => {
     await expect(open(recipient, box)).rejects.toThrow();
   });
 
-  it.each(['', 'not-a-sealed-box', 'sbx.v2.key.AA.BB.CC', 'env.v1.key.AA.BB.CC'])(
-    'rejects malformed input %j',
-    (value) => {
-      expect(() => parseSealedKey(value)).toThrow();
-    },
-  );
+  it.each([
+    '',
+    'not-a-sealed-box',
+    'sbx.v2.key.AA.BB.CC',
+    'env.v1.key.AA.BB.CC',
+    'sbx.v01.key.AA.BB.CC', // non-canonical version
+  ])('rejects malformed input %j', (value) => {
+    expect(() => parseSealedKey(value)).toThrow();
+  });
+
+  it('rejects a non-canonical "v01" version on an otherwise valid sealed box', () => {
+    const parts = vector.sealed.split('.');
+    const nonCanonical = [parts[0], 'v01', ...parts.slice(2)].join('.');
+
+    expect(() => parseSealedKey(vector.sealed)).not.toThrow();
+    expect(() => parseSealedKey(nonCanonical)).toThrow();
+  });
+
+  it('rejects sealed boxes whose segments use the standard base64 alphabet', () => {
+    const parts = vector.sealed.split('.');
+    // 65 bytes always pad in standard base64, so this segment contains '='.
+    parts[3] = Buffer.from(fromHex(vector.ephemeralPublicKeyHex)).toString('base64');
+
+    expect(() => parseSealedKey(parts.join('.'))).toThrow();
+  });
 
   it('base64url helpers round-trip', () => {
     const bytes = crypto.getRandomValues(new Uint8Array(37));
     expect(toHex(fromBase64Url(toBase64Url(bytes)))).toBe(toHex(bytes));
+  });
+
+  it.each([
+    'AB+A', // standard alphabet '+'
+    'AB/A', // standard alphabet '/'
+    'AA==', // explicit padding
+    'AAAAA', // length % 4 == 1 is never valid
+    'AB.A', // outside the alphabet
+    'AB A',
+  ])('fromBase64Url rejects non-base64url input %j', (value) => {
+    expect(() => fromBase64Url(value)).toThrow();
   });
 });

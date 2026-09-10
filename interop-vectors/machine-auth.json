@@ -1,0 +1,8 @@
+{
+  "description": "Kryptic machine auth derivation known-answer test for v2 client secrets (prefix \"ksm2_\"). authSecret = base64url(HKDF-SHA256(ikm = UTF-8 secret, salt = UTF-8 \"kryptic.machine.auth.v2\", info = UTF-8 \"auth\", length 32)). The raw secret never goes on the wire: machines present authSecret at token exchange and keep the raw secret for local wrap-key derivation. Legacy secrets without the prefix are presented unchanged. Every runtime exchanging machine tokens must reproduce this output.",
+  "clientSecret": "ksm2_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "saltUtf8": "kryptic.machine.auth.v2",
+  "infoUtf8": "auth",
+  "outputLengthBytes": 32,
+  "authSecret": "vz7GEN9I0cNdIh_4eyjJj7xAiJOgRW58L_XcdOdwRtk"
+}

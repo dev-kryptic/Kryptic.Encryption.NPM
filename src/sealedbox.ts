@@ -47,7 +47,17 @@ export function toBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+/**
+ * Strict base64url alphabet (RFC 4648 section 5, no padding). Standard-alphabet
+ * characters ('+', '/') and '=' padding are rejected, matching Go's
+ * base64.RawURLEncoding.
+ */
+const BASE64URL_PATTERN = /^[A-Za-z0-9_-]*$/;
+
 export function fromBase64Url(value: string): Uint8Array {
+  if (!BASE64URL_PATTERN.test(value) || value.length % 4 === 1) {
+    throw new Error('Value is not valid base64url.');
+  }
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
   const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
   const binary = atob(padded);
